@@ -9,13 +9,12 @@ import pickle
 import urllib
 import hashlib
 import sha3
-import configparser # for Python3
+import configparser
 
 
 def make_dir(path):
     if not os.path.isdir(path):
         os.mkdir(path)
-
 
 def make_correspondence_table(correspondence_table, original_url, hashed_url):
     """Create reference table of hash value and original URL.
@@ -73,11 +72,11 @@ if __name__ == '__main__':
     config.read('authentication.ini')
     bing_api_key = config['auth']['bing_api_key']
 
-    save_dir_path = '/root/share/local_data/sandbox'
+    save_dir_path = 'test'
     make_dir(save_dir_path)
 
-    num_imgs_required = 300 # Number of images you want.
-    num_imgs_per_transaction = 150 # default 30, Max 150 images
+    num_imgs_required = 10 # Number of images you want.
+    num_imgs_per_transaction = 10 # default 30, Max 150 images
     offset_count = math.floor(num_imgs_required / num_imgs_per_transaction)
 
     url_list = []
@@ -101,9 +100,10 @@ if __name__ == '__main__':
 
         try:
             conn = http.client.HTTPSConnection('api.cognitive.microsoft.com')
-            conn.request("POST", "/bing/v7.0/images/search?%s" % params, "{body}", headers)
+            conn.request("GET", "/bing/v7.0/images/search?%s" % params, "{body}", headers)
             response = conn.getresponse()
             data = response.read()
+            # print(data)
 
             save_res_path = os.path.join(save_dir_path, 'pickle_files')
             make_dir(save_res_path)
@@ -117,27 +117,26 @@ if __name__ == '__main__':
         else:
             decode_res = data.decode('utf-8')
             data = json.loads(decode_res)
-
-            # pattern = r"&r=(http.+)&p=" # extract an URL of image
-
             for values in data['value']:
                 unquoted_url = urllib.parse.unquote(values['contentUrl'])
-                # img_url = re.search(pattern, unquoted_url)
-                # if img_url:
-                #     url_list.append(img_url.group(1))
                 if unquoted_url:
                     url_list.append(unquoted_url)
 
+    print("num of urls:  "+ str(len(url_list)))
+    num_of_img_data = 0
     for url in url_list:
         try:
             img_path = make_img_path(save_dir_path, url)
             image = download_image(url)
             save_image(img_path, image)
             print('saved image... {}'.format(url))
+            num_of_img_data = num_of_img_data + 1
         except KeyboardInterrupt:
             break
         except Exception as err:
             print("%s" % (err))
+
+    print("num of images:  "+ str(num_of_img_data))
 
     correspondence_table_path = os.path.join(save_dir_path, 'corr_table')
     make_dir(correspondence_table_path)
